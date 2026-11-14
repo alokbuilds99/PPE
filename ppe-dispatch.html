@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rama Engineers – PPE Dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#12233d; --ink2:#2f4464; --paper:#f1f4f1; --card:#ffffff; --line:#d6ddd8; --soft:#e9eeea;
+    --hi:#ffd21f; --hi-soft:#fff6c9; --ok:#1f8f55; --ok-soft:#e2f4ea; --amber:#d98200; --bad:#cf3a30; --bad-soft:#fde9e7; --muted:#5d6b7c;
+    --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 "Barlow",system-ui,"Segoe UI",sans-serif; background:var(--paper); color:var(--ink); }
+  a { color:var(--ink); } :focus-visible { outline:3px solid var(--hi); outline-offset:2px; }
+
+  /* top bar */
+  .top { position:sticky; top:0; z-index:10; background:var(--ink); color:#fff; display:flex; align-items:stretch; gap:6px; padding:0 22px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:12px; padding:12px 18px 12px 0; }
+  .mark { width:14px; height:34px; background:repeating-linear-gradient(-45deg,var(--hi) 0 6px,var(--ink) 6px 12px); border:2px solid var(--hi); }
+  .brand b { font:700 22px/1 var(--cond); letter-spacing:.01em; display:block; } .brand span { font-size:13px; color:#b8c5d8; }
+  .tabs { display:flex; } .tabs a { color:#cfd9e8; text-decoration:none; padding:0 16px; display:flex; align-items:center; font-weight:500; border-bottom:4px solid transparent; border-top:4px solid transparent; }
+  .tabs a:hover { color:#fff; } .tabs a.on { color:#fff; border-bottom-color:var(--hi); }
+  .tools { margin-left:auto; display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:8px 0; }
+  .tools button { background:none; border:0; color:#cfd9e8; padding:6px 10px; border-radius:6px; } .tools button:hover { background:rgba(255,255,255,.12); color:#fff; }
+
+  main { max-width:1180px; margin:0 auto; padding:26px 22px 60px; }
+  h1 { font:700 40px/1.05 var(--cond); margin:0; } h2 { font:600 24px/1.15 var(--cond); margin:0 0 12px; }
+  .muted { color:var(--muted); font-size:14px; } .back { display:inline-block; margin-bottom:14px; font-weight:500; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:20px; margin-top:20px; }
+
+  /* loading bar on the home screen */
+  .load { background:var(--ink); color:#fff; border-radius:6px; padding:26px 26px 22px; }
+  .load p { margin:6px 0 20px; color:#c3cfdf; }
+  .segs { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+  .seg { min-width:104px; text-decoration:none; color:#fff; display:block; }
+  .seg .track { display:block; height:22px; background:#2b3f5e; border-radius:3px; overflow:hidden; }
+  .seg .track i { display:block; height:100%; background:var(--hi); }
+  .seg b { display:block; font:600 17px/1.2 var(--cond); margin-top:8px; white-space:nowrap; } .seg span { font-size:13px; color:#c3cfdf; white-space:nowrap; }
+  .seg:hover .track { outline:2px solid var(--hi); }
+
+  /* tables */
+  .wrap { overflow-x:auto; } table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-weight:600; font-size:14px; color:var(--muted); padding:8px 12px; border-bottom:2px solid var(--ink); white-space:nowrap; }
+  td { padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; } td.c, th.c { text-align:center; font-variant-numeric:tabular-nums; }
+  tbody tr:hover td { background:#fafbfa; }
+  td.tied { box-shadow:inset 5px 0 0 var(--hi); }
+  .name { font:600 19px/1.2 var(--cond); text-decoration:none; } .name:hover { text-decoration:underline; }
+  tr.sub td { background:var(--ink); color:#fff; font:600 17px/1.2 var(--cond); padding:8px 12px; }
+  td.due { background:var(--hi-soft); } td.done { background:var(--ok-soft); color:var(--ok); } td.none { color:#b3bcc6; }
+  .big { font:600 20px/1 var(--cond); }
+  .meter { height:8px; background:var(--soft); border-radius:2px; overflow:hidden; min-width:90px; } .meter i { display:block; height:100%; background:var(--ok); }
+  .state { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:500; white-space:nowrap; }
+  .state::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--bad); }
+  .state.part::before { background:var(--amber); } .state.full::before { background:var(--ok); }
+  .kind { font-size:13px; font-weight:500; padding:2px 8px; border:1px solid var(--line); border-radius:3px; background:var(--paper); white-space:nowrap; }
+  .size { display:inline-block; min-width:38px; text-align:center; font:600 16px/1 var(--cond); padding:5px 6px; border:1.5px solid var(--ink); border-radius:3px; }
+
+  /* buttons and fields */
+  button, .btn { font:inherit; font-weight:500; cursor:pointer; border:1.5px solid var(--ink); background:#fff; color:var(--ink); border-radius:4px; padding:8px 14px; text-decoration:none; display:inline-block; }
+  button:hover, .btn:hover { background:var(--soft); }
+  .go { background:var(--hi); border-color:var(--ink); font-weight:600; } .go:hover { background:#ffdf55; }
+  .small { padding:3px 10px; font-size:14px; } .quiet { border-color:var(--line); } .danger { color:var(--bad); border-color:var(--line); }
+  input { font:inherit; border:1.5px solid #aeb9c4; border-radius:4px; padding:8px 10px; width:100%; background:#fff; color:var(--ink); }
+  input.q { width:84px; text-align:right; font-variant-numeric:tabular-nums; } input.q.over { border-color:var(--bad); background:var(--bad-soft); }
+  input:disabled { background:var(--soft); border-color:var(--line); } input[type=checkbox] { width:20px; height:20px; accent-color:var(--ink); flex:none; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; } .fields label { font-size:14px; font-weight:500; display:block; margin-bottom:4px; }
+  .search { max-width:300px; }
+
+  /* shipping label on the site screen */
+  .label { background:#fff; border:2px solid var(--ink); border-radius:6px; overflow:hidden; }
+  .stripe { height:16px; background:repeating-linear-gradient(-45deg,var(--ink) 0 14px,var(--hi) 14px 28px); }
+  .label-body { padding:22px 26px 24px; display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:26px; }
+  .label .to { font-size:14px; font-weight:600; color:var(--muted); }
+  .label .address { font-size:19px; line-height:1.45; margin:12px 0 16px; max-width:56ch; }
+  .label dl { margin:0; display:grid; gap:14px; align-content:start; border-left:2px dashed var(--line); padding-left:26px; }
+  .label dt { font-size:14px; font-weight:600; color:var(--muted); } .label dd { margin:2px 0 0; font:600 22px/1.2 var(--cond); word-break:break-word; }
+  .label dd.missing { color:var(--bad); font:500 16px/1.4 "Barlow",system-ui,sans-serif; }
+  .together { margin-top:14px; background:var(--hi-soft); border:1.5px solid var(--ink); border-radius:6px; padding:16px 20px; }
+  .together h2 { margin-bottom:4px; } .together label { display:flex; gap:12px; align-items:flex-start; margin-top:12px; cursor:pointer; }
+
+  /* sticky action bar */
+  .dock { position:sticky; bottom:0; z-index:5; margin:18px -20px -20px; padding:14px 20px; background:var(--ink); color:#fff; border-radius:0 0 5px 5px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .dock .count { font:700 30px/1 var(--cond); color:var(--hi); margin-right:6px; } .dock .grow { flex:1; }
+  .dock button { border-color:#fff; background:transparent; color:#fff; } .dock button:hover { background:rgba(255,255,255,.14); }
+  .dock .go { background:var(--hi); color:var(--ink); border-color:var(--hi); } .dock .go:hover { background:#ffdf55; }
+
+  /* item tiles */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(255px,1fr)); gap:16px; margin-top:18px; }
+  .tile { background:#fff; border:1px solid var(--line); border-top:6px solid var(--ink); border-radius:6px; padding:18px; text-decoration:none; display:block; }
+  .tile:hover { border-color:var(--ink); background:#fffdf2; }
+  .tile h2 { margin:0; } .tile .left { font:700 46px/1 var(--cond); margin:16px 0 2px; }
+  .tile .meter { margin:14px 0 10px; } .tile .short { color:var(--bad); font-weight:600; }
+  .facts { display:flex; gap:34px; flex-wrap:wrap; margin-top:16px; } .facts div b { display:block; font:700 34px/1 var(--cond); } .facts div span { font-size:14px; color:var(--muted); }
+  .alert { margin-top:16px; background:var(--bad-soft); border-left:6px solid var(--bad); padding:12px 16px; border-radius:4px; }
+
+  #toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px); background:var(--ink); color:#fff; padding:12px 20px; border-radius:6px;
+           border-left:8px solid var(--hi); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:30; max-width:90vw; }
+  #toast.show { opacity:1; transform:translate(-50%,0); } #toast.bad { border-left-color:var(--bad); }
+  @media (prefers-reduced-motion:reduce) { #toast { transition:none; } }
+  @media (max-width:760px) { h1 { font-size:31px; } .label-body { grid-template-columns:1fr; } .label dl { border-left:0; border-top:2px dashed var(--line); padding:18px 0 0; } }
+
+  #slip { display:none; padding:26px; font-size:15px; }
+  @media print { body.printing > *:not(#slip) { display:none; } body.printing #slip { display:block; } body { background:#fff; } tr.sub td { background:#eee; color:#000; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="mark"></div><div><b>Rama Engineers</b><span>Nxtra PPE dispatch</span></div></div>
+  <nav class="tabs"><a href="#" data-nav="sites">Places</a><a href="#items" data-nav="items">PPE items</a><a href="#all" data-nav="all">Shipments</a></nav>
+  <div class="tools">
+    <button onclick="exportCsv()">Export to Excel</button>
+    <button onclick="backup()">Backup</button>
+    <button onclick="document.getElementById('rf').click()">Restore</button>
+    <input type="file" id="rf" accept=".json" hidden onchange="restore(this)">
+  </div>
+</header>
+<main id="app"></main>
+<div id="toast" role="status"></div>
+<div id="slip"></div>
+
+<script>
+const SHOE = [3,4,5,6,7,8,9,10,11,12];
+const JKT = ['S','M','L','XL','XXL','3XL','4XL','5XL'];
+const NOGST = 'Not in address file';
+
+const ITEMS = [
+ {id:'shoe',   short:'Shoes',           name:'Safety Shoes', brand:'MODULO – Black', approved:247, sizes:SHOE.map(String)},
+ {id:'helmet', short:'Helmets',         name:'Safety Helmet', brand:'Udyogi Lighton ES – White', approved:343},
+ {id:'spec',   short:'Spectacles',      name:'Ultra Over Safety Spectacle', brand:'', approved:303},
+ {id:'gloves', short:'Gloves',          name:'Safety Gloves', brand:'Udyogi 4131X', approved:952},
+ {id:'toe',    short:'Toe caps',        name:'Universal Safety Toe Caps', brand:'', approved:120},
+ {id:'comp',   short:'Composite shoes', name:'Safety Shoes with Composite Toe', brand:'MODULO', approved:144, sizes:SHOE.map(String)},
+ {id:'jacket', short:'Jackets',         name:'Reflective Jacket', brand:'Reflecto Safe', approved:356, sizes:JKT},
+];
+
+// Entries that deliver to the same place and can travel as one shipment.
+const GROUPS = [['PNQ24O','PNQ24P'], ['MAH1','MAH2'], ['MANO','MANP'], ['CH2','CH3'], ['FUS','HYD'], ['BHT','OCT']];
+
+// ss/sb = shoes staff / visitor+buffer by size 3..12; js/jv = jackets staff / visitor by size S..5XL
+// h, g = [staff, visitor+buffer] helmets and gloves; gog = spectacles; toe = toe caps
+const SITES = [
+ {c:'FUS', name:'Nxtra Fusion DC', kind:'Operation', city:'Navi Mumbai', gst:'27AAECN3926D1ZM', contact:'VISHNU R – 7710025958',
+  addr:'Nxtra Data ltd. TTC 14/1 TTC Industrial Area, Near Sandoz Pharma, Digha-Navimumbai-400708',
+  h:[0,0], g:[60,20], gog:20, toe:6, ss:[0,0,7,2,8,10,7,7,2,0], sb:[0,0,0,2,2,2,2,2,0,1]},
+ {c:'PNQ24O', name:'PNQ 24', kind:'Operation', city:'Pune', gst:'27AAECN3926D4ZJ', contact:'ANIKET A – 9158291222',
+  addr:'Plot No.P-1-1 & P-1-2, MIDC, Rajiv Gandhi Infotech Park Phase-III(SEZ), Hinjewadi, Tal-Mulshi, Dist Pune. 411057',
+  h:[14,10], g:[56,30], gog:30, toe:6, ss:[0,0,0,1,0,0,0,0,0,0], sb:[0,0,2,2,4,4,4,2,2,0], js:[0,6,10,2,6,4,0,0], jv:[0,3,3,3,3,3,0,0]},
+ {c:'PNQ24P', name:'PNQ 24', kind:'Project', city:'Pune', gst:NOGST, contact:'',
+  addr:'Plot No.P-1-1 & P-1-2, MIDC, Rajiv Gandhi Infotech Park Phase-III(SEZ), Hinjewadi, Tal-Mulshi, Dist Pune. 411057',
+  h:[0,22], g:[88,50], gog:40, toe:6, ss:[0,1,2,2,5,5,6,1,0,0], sb:[0,0,2,3,5,5,5,2,2,0], js:[0,10,6,22,6,4,0,0]},
+ {c:'MAH1', name:'Mahape DC 1', kind:'Operation', city:'Navi Mumbai', gst:'27AAECN3926D1ZM', contact:'VISHNU R – 7710025958',
+  addr:'Nxtra Data Ltd. Plot no. IT-07, TTC Industrial Area, Mahape, Navi Mumbai, Thane, Maharashtra - 400710',
+  h:[15,12], g:[50,10], gog:20, toe:6, ss:[0,1,1,0,2,6,6,2,0,0], sb:[0,0,2,2,2,5,5,5,1,0], js:[1,1,8,8,1,1,1,1], jv:[0,0,2,2,2,2,2,2]},
+ {c:'MAH2', name:'Mahape DC 2', kind:'Project', city:'Navi Mumbai', gst:'27AAECN3926D1ZM', contact:'VISHNU R – 7710025958',
+  addr:'Plot IT 07, T.T.C. Industrial Area, Mahape, Navi Mumbai, Maharashtra 400710, India',
+  h:[20,20], g:[70,80], gog:40, toe:6, ss:[0,0,2,1,4,5,1,1,1,0], sb:[0,0,0,2,3,3,3,2,2,0], js:[0,4,13,10,4,4,0,0], jv:[0,0,7,7,4,0,0,0]},
+ {c:'PUNE', name:'PNQ20&25 DC (Pune DC2 & DC3)', kind:'Operation', city:'Pune', gst:'27AAECN3926D3ZK', contact:'MOHINI S – 7888194079',
+  addr:'Plot No- 13/10A,28, Rajiv Gandhi IT Park, Phase III, Hinjewadi, Pune, Maharashtra, India – 411063',
+  h:[5,5], g:[100,50], gog:10, toe:6, ss:[0,1,1,1,5,4,2,1,0,0], sb:[1,1,2,3,3,3,3,2,1,1], js:[4,5,4,3,0,0,0,0], jv:[4,6,5,5,5,0,0,0]},
+ {c:'KHA', name:'Kharadi DC', kind:'Operation', city:'Pune', gst:NOGST, contact:'',
+  addr:'Credence Resourse Management, E Park, Near Zensar Tech, Thite Nanagar, Kharadi, Pune - 411014',
+  h:[4,0], g:[4,0], gog:0, toe:3, ss:[0,0,0,0,0,1,0,0,0,0], sb:[0,0,0,0,1,0,1,0,0,0]},
+ {c:'WFDC', name:'WFDC 1', kind:'Operation', city:'Bengaluru', gst:'29AAECN3926D1ZI', contact:'SUBHASH P – 7045251775',
+  addr:'Nxtra by Airtel Plot 111 & 112, Rd Number 7 Vijayanagar, EPIP Zone Whitefield, Bangalore, Karnataka 560066.',
+  h:[4,5], g:[4,5], gog:5, toe:3, ss:[0,0,0,0,0,1,2,2,0,0], sb:[0,0,0,0,0,1,1,1,2,0], js:[0,0,2,2,2,1,1,0], jv:[0,0,2,2,1,0,0,0]},
+ {c:'BLR2', name:'Bengaluru DC 2', kind:'Project', city:'Bengaluru', gst:NOGST, contact:'',
+  addr:'Nxttra Data ltd. Survey No. 71 & 72 Katamnallur Village, Bidarahalli Hobli Whitefield Hoskote Road Whitefield, Bengaluru Karnataka - 560049',
+  h:[19,10], g:[11,10], gog:10, toe:6, sb:[0,0,0,1,1,1,2,2,2,1], js:[0,0,2,0,2,2,3,0], jv:[0,0,1,2,2,2,3,0]},
+ {c:'MANO', name:'Manesar DC', kind:'Operation', city:'Gurugram', gst:'06AAECN3926D1ZQ', contact:'AAROSHI S – 9557903499',
+  addr:'Airtel data center, Sector 8, Imt Manesar, Gurugram, 122052',
+  h:[6,10], g:[6,10], gog:10, toe:6, ss:[0,0,0,0,0,1,0,0,0,0], sb:[0,0,0,1,2,2,2,2,1,0], js:[0,0,3,1,2,0,0,0], jv:[0,1,4,4,1,0,0,0]},
+ {c:'MANP', name:'Manesar IT03', kind:'Project', city:'Gurugram', gst:'06AAECN3926D1ZQ', contact:'AAROSHI S – 9557903499',
+  addr:'Airtel data center, Sector 8, Imt Manesar, Gurugram, 122052',
+  h:[0,10], g:[10,20], gog:10, toe:6, sb:[0,0,0,1,2,3,2,2,1,1], js:[0,1,2,4,4,1,1,1], jv:[0,2,2,3,4,3,1,0]},
+ {c:'N62', name:'Noida 62', kind:'Operation', city:'Noida', gst:'09AAECN3926D1ZK', contact:'AAROSHI S – 9557903499',
+  addr:'Nxtra data limited, A 14, Block A, Industrial area, Sector 62, Noida, Uttar Pradesh, 201309',
+  h:[7,10], g:[7,10], gog:10, toe:6, sb:[0,0,0,1,2,2,2,2,1,0], js:[0,1,4,2,0,0,0,0], jv:[0,1,4,4,1,0,0,0]},
+ {c:'N81', name:'Noida 81', kind:'Operation', city:'Noida', gst:'09AAECN3926D1ZK', contact:'AAROSHI S – 9557903499',
+  addr:'Bharti airtel data center, 192B, Block B, Phase 2, Noida, Uttar Pradesh, 201305',
+  h:[1,8], g:[1,8], gog:8, toe:6, sb:[0,0,0,0,2,2,2,2,0,0], js:[0,0,0,1,0,0,0,0], jv:[0,1,3,3,1,0,0,0]},
+ {c:'KOL', name:'Kolkata DC', kind:'Operation & Project', city:'Kolkata', gst:'Missing in address file', contact:'RATAN D – 8435482613',
+  addr:'Nxtra Airtel Project, Plot No. SV – 7, Silicon Valley, New Town, Kolkata - 700157, Landmark: srachi signal crossing, near BSF head quarter',
+  h:[6,30], g:[6,30], gog:30, toe:6, sb:[1,3,0,0,4,8,8,5,0,0], js:[3,3,3,3,5,5,5,5], jv:[3,3,3,5,5,5,5,5]},
+ {c:'BHT', name:'Bharti Tower DC', kind:'Operation', city:'Chennai', gst:'33AAECN3926D1ZT', contact:'SASIKALA R – 8754551796',
+  addr:'No.101, Bharti Tower, Santhome High Road, Santhome, Chennai, Tamilnadu-600028',
+  h:[3,5], g:[10,20], gog:5, toe:6, ss:[0,0,0,0,0,0,1,0,0,0], sb:[0,0,0,0,1,2,0,1,1,1], js:[0,0,1,0,1,1,2,0], jv:[0,0,1,1,1,0,0,0]},
+ {c:'OCT', name:'Oceanic Tower DC', kind:'Operation', city:'Chennai', gst:'33AAECN3926D1ZT', contact:'SASIKALA R – 8754551796',
+  addr:'No.101, Oceanic Tower, Santhome High Road, Santhome, Chennai, Tamilnadu-600028',
+  h:[3,5], g:[10,20], gog:5, toe:6, ss:[0,0,0,0,0,1,0,0,1,0], sb:[0,0,0,1,1,2,1,1,0,0], js:[1,1,0,1,0,1,1,0], jv:[1,0,1,1,1,1,1,0]},
+ {c:'CH1', name:'Chennai DC 1', kind:'Operation', city:'Chennai', gst:'33AAECN3926D1ZT', contact:'SASIKALA R – 8754551796',
+  addr:'F-8, SIPCOT IT Park, Opp. TCS Gate No.1, Siruseri, Navallur, Chennai 603103',
+  h:[3,3], g:[5,3], gog:3, toe:6, ss:[0,0,0,0,0,2,0,1,0,0], sb:[0,0,0,0,0,0,1,1,1,0], js:[1,1,1,1,1,3,2,0], jv:[1,1,0,1,1,0,1,0]},
+ {c:'CH2', name:'Chennai DC 2', kind:'Operation', city:'Chennai', gst:'33AAECN3926D1ZT', contact:'SASIKALA R – 8754551796',
+  addr:'Plot No. A32 & A33, 3rd cross street, Sipcot IT Park, Siruseri, Navalur-603103',
+  h:[10,5], g:[10,5], gog:5, toe:6, js:[2,2,2,2,2,2,5,0], jv:[1,1,1,1,1,1,1,0]},
+ {c:'CH3', name:'Chennai DC 3', kind:'Project', city:'Chennai', gst:NOGST, contact:'',
+  addr:'Plot No. A32 & A33, 3rd cross street, Sipcot IT Park, Siruseri, Navalur-603103',
+  h:[20,20], g:[20,20], gog:20, toe:6, ss:[0,0,0,0,1,0,1,1,0,1], sb:[1,1,1,2,3,4,4,4,2,2], js:[5,5,5,5,5,5,5,0], jv:[5,5,5,5,5,5,5,0]},
+ {c:'OWT', name:'Tuticorin (OWT)', kind:'Operation', city:'Thoothukudi', gst:'33AAECN3926D1ZT', contact:'SASIKALA R – 8754551796',
+  addr:'Oneweb India communication, Plot A1, Sipcot industrial park, Vaipar Village, Vilathikulam taluk, Thoothukudi. 628903.',
+  h:[1,2], g:[1,2], gog:2, toe:6, ss:[0,0,0,0,0,0,0,1,0,0], sb:[0,0,0,0,1,1,1,1,0,0], js:[1,0,1,1,0,1,1,0], jv:[0,0,1,1,0,0,0,0]},
+ {c:'HYD', name:'Hyderabad', kind:'Project', city:'Deliver to Fusion DC, Navi Mumbai', gst:NOGST, contact:'',
+  addr:'Nxtra Data ltd. TTC 14/1 TTC Industrial Area, Near Sandoz Pharma, Digha-Navimumbai-400708 (Temporary Delivered to Fusion DC)',
+  h:[0,10], g:[0,20], gog:20, toe:6, sb:[0,1,1,2,3,3,3,3,1,1], js:[2,2,2,3,3,3,1,1], jv:[0,0,3,3,3,3,2,2]},
+];
+
+// ---------- storage ----------
+const KEY = 'rama-ppe-dispatch-v1';
+let DB = { seq: 0, dispatches: [] };
+try { DB = JSON.parse(localStorage.getItem(KEY)) || DB; } catch (e) {}
+function upgrade() {            // records saved by the first version had one site each
+  DB.dispatches.forEach((d) => {
+    if (!d.sites) d.sites = [d.site];
+    d.lines.forEach((l) => { if (!l.site) l.site = l.key.split('|')[0]; });
+  });
+}
+upgrade();
+const save = () => localStorage.setItem(KEY, JSON.stringify(DB));
+
+// ---------- helpers ----------
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n) => Number(n).toLocaleString('en-IN');
+const siteBy = (c) => SITES.find((s) => s.c === c);
+const itemBy = (id) => ITEMS.find((i) => i.id === id);
+const itemLabel = (id) => { const i = itemBy(id); return i.name + (i.brand ? ` (${i.brand})` : ''); };
+const fullName = (s) => `${s.name} (${s.kind})`;
+const matesOf = (c) => (GROUPS.find((g) => g.includes(c)) || []).filter((x) => x !== c);
+const pct = (done, req) => (req > 0 ? Math.min(100, Math.round(done / req * 100)) : 0);
+const meter = (done, req) => `<div class="meter"><i style="width:${pct(done, req)}%"></i></div>`;
+const state = (req, done) => done >= req ? '<span class="state full">Complete</span>'
+  : done > 0 ? '<span class="state part">Partly sent</span>' : '<span class="state">Not started</span>';
+const gstOk = (s) => /^\d{2}[A-Z]/.test(s.gst);
+
+let toastTimer;
+function toast(msg, bad) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = ''; }, 3600);
+}
+
+function linesFor(s) {
+  const out = [], shoeIt = s.kind === 'Project' ? 'comp' : 'shoe';
+  const push = (key, it, size, a, b) => { if (a + b) out.push({ key, site: s.c, it, item: itemLabel(it), size, staff: a, vb: b }); };
+  SHOE.forEach((z, i) => push(`${s.c}|shoe|${z}`, shoeIt, String(z), (s.ss || [])[i] || 0, (s.sb || [])[i] || 0));
+  push(`${s.c}|helmet|`, 'helmet', '', s.h[0], s.h[1]);
+  push(`${s.c}|gloves|`, 'gloves', '', s.g[0], s.g[1]);
+  push(`${s.c}|spec|`, 'spec', '', 0, s.gog);
+  push(`${s.c}|toe|`, 'toe', '', s.toe, 0);
+  JKT.forEach((z, i) => push(`${s.c}|jacket|${z}`, 'jacket', z, (s.js || [])[i] || 0, (s.jv || [])[i] || 0));
+  return out;
+}
+function sentMap() {
+  const m = {};
+  DB.dispatches.forEach((d) => d.lines.forEach((l) => { m[l.key] = (m[l.key] || 0) + l.qty; }));
+  return m;
+}
+function tally(lines, sent) {
+  const req = lines.reduce((t, l) => t + l.staff + l.vb, 0), done = lines.reduce((t, l) => t + (sent[l.key] || 0), 0);
+  return { req, done, bal: req - done };
+}
+function ordered() {            // keep entries that can ship together next to each other
+  const out = [];
+  SITES.forEach((s) => {
+    const g = GROUPS.find((x) => x.includes(s.c));
+    (g ? g.map(siteBy) : [s]).forEach((x) => { if (!out.includes(x)) out.push(x); });
+  });
+  return out;
+}
+
+// ---------- routing ----------
+const app = document.getElementById('app');
+let combo = { base: null, extra: new Set() };
+function route() {
+  const h = location.hash.slice(1);
+  const nav = h.startsWith('item') ? 'items' : h === 'all' ? 'all' : 'sites';
+  document.querySelectorAll('.tabs a').forEach((a) => a.classList.toggle('on', a.dataset.nav === nav));
+  window.scrollTo(0, 0);
+  if (h.startsWith('site/')) return siteView(h.slice(5));
+  if (h.startsWith('item/')) return itemView(h.slice(5));
+  if (h === 'items') return itemsView();
+  if (h === 'all') return allView();
+  listView();
+}
+window.addEventListener('hashchange', route);
+
+// ---------- places ----------
+function listView() {
+  const sent = sentMap();
+  let R = 0, D = 0, complete = 0;
+  const rows = ordered().map((s) => {
+    const t = tally(linesFor(s), sent); R += t.req; D += t.done; if (t.bal === 0) complete++;
+    const mates = matesOf(s.c).map((c) => fullName(siteBy(c))).join(', ');
+    return `<tr data-s="${esc((s.name + ' ' + s.kind + ' ' + s.city).toLowerCase())}">
+      <td class="${mates ? 'tied' : ''}"><a class="name" href="#site/${s.c}">${esc(s.name)}</a>
+        ${mates ? `<div class="muted">Can ship with ${esc(mates)}</div>` : ''}</td>
+      <td><span class="kind">${esc(s.kind)}</span></td><td>${esc(s.city)}</td>
+      <td class="n">${fmt(t.req)}</td><td class="n">${fmt(t.done)}</td><td class="n big">${fmt(t.bal)}</td>
+      <td>${meter(t.done, t.req)}</td><td>${state(t.req, t.done)}</td>
+      <td><a class="btn go small" href="#site/${s.c}">Dispatch</a></td></tr>`;
+  }).join('');
+  const segs = ITEMS.map((i) => {
+    const t = tally(SITES.flatMap((s) => linesFor(s).filter((l) => l.it === i.id)), sent);
+    return `<a class="seg" href="#item/${i.id}" style="flex:${t.req} 1 0" title="${esc(i.name)}">
+      <span class="track"><i style="width:${pct(t.done, t.req)}%"></i></span>
+      <b>${esc(i.short)}</b><span>${fmt(t.bal)} to send</span></a>`;
+  }).join('');
+  app.innerHTML = `
+    <section class="load">
+      <h1>${R - D > 0 ? `${fmt(R - D)} units still to send` : 'Everything has been dispatched'}</h1>
+      <p>${fmt(D)} of ${fmt(R)} dispatched in ${DB.dispatches.length} shipment${DB.dispatches.length === 1 ? '' : 's'}.
+         ${complete} of ${SITES.length} places are complete. Each bar below is one PPE item.</p>
+      <div class="segs">${segs}</div>
+    </section>
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <h2 style="margin:0">Places to deliver</h2>
+        <input class="search" placeholder="Search place or city" aria-label="Search place or city" oninput="filterSites(this.value)"></div>
+      <div class="wrap"><table><thead><tr><th>Place</th><th>Type</th><th>City</th><th class="n">Required</th>
+        <th class="n">Dispatched</th><th class="n">Balance</th><th>Progress</th><th>Status</th><th></th></tr></thead>
+        <tbody id="site-rows">${rows}</tbody></table></div>
+    </section>`;
+}
+function filterSites(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('#site-rows tr').forEach((tr) => { tr.style.display = tr.dataset.s.includes(q) ? '' : 'none'; });
+}
+
+// ---------- PPE items ----------
+function itemsView() {
+  const sent = sentMap();
+  app.innerHTML = `<h1>PPE items</h1><p class="muted" style="margin:6px 0 0">Choose an item to see every place it has to go.</p>
+    <div class="tiles">${ITEMS.map((i) => {
+      const L = SITES.flatMap((s) => linesFor(s).filter((l) => l.it === i.id)), t = tally(L, sent);
+      const places = new Set(L.map((l) => l.site)).size;
+      return `<a class="tile" href="#item/${i.id}"><h2>${esc(i.name)}</h2><div class="muted">${esc(i.brand) || '&nbsp;'}</div>
+        <div class="left">${fmt(t.bal)}</div><div class="muted">still to send, out of ${fmt(t.req)}</div>
+        ${meter(t.done, t.req)}
+        <div class="muted">${places} places. Approved order ${fmt(i.approved)}.</div>
+        ${t.req > i.approved ? `<div class="short">Order is short by ${fmt(t.req - i.approved)}</div>` : ''}</a>`;
+    }).join('')}</div>`;
+}
+
+function itemView(id) {
+  const i = itemBy(id);
+  if (!i) return itemsView();
+  const sent = sentMap(), sizes = i.sizes || [];
+  const rows = ordered().map((s) => ({ s, L: linesFor(s).filter((l) => l.it === id) })).filter((x) => x.L.length);
+  const all = tally(rows.flatMap((x) => x.L), sent);
+  const cell = (L, z) => { const l = L.find((x) => x.size === z); if (!l) return '<td class="c none">–</td>';
+    const req = l.staff + l.vb, bal = req - (sent[l.key] || 0);
+    return `<td class="c ${bal ? 'due' : 'done'}"><b>${bal}</b><span class="muted"> of ${req}</span></td>`; };
+  app.innerHTML = `
+    <a class="back" href="#items">Back to all PPE items</a>
+    <h1>${esc(i.name)}</h1><div class="muted">${esc(i.brand)}</div>
+    <div class="facts">
+      <div><b>${fmt(all.bal)}</b><span>still to send</span></div>
+      <div><b>${fmt(all.done)}</b><span>dispatched</span></div>
+      <div><b>${fmt(all.req)}</b><span>required at ${rows.length} places</span></div>
+      <div><b>${fmt(i.approved)}</b><span>approved order</span></div>
+    </div>
+    ${all.req > i.approved ? `<div class="alert"><b>The order is short.</b> Places need ${fmt(all.req)} but the approved order is ${fmt(i.approved)}, so ${fmt(all.req - i.approved)} cannot be supplied from it.</div>` : ''}
+    <section class="panel"><h2>Where it has to go</h2>
+      ${sizes.length ? '<p class="muted" style="margin-top:-6px">Each size shows the balance left out of the quantity required. Yellow still has to go, green is done.</p>' : ''}
+      <div class="wrap"><table><thead><tr><th>Place</th><th>Type</th><th>City</th>${sizes.map((z) => `<th class="c">${z}</th>`).join('')}
+        <th class="n">Required</th><th class="n">Dispatched</th><th class="n">Balance</th><th></th></tr></thead>
+      <tbody>${rows.map(({ s, L }) => { const t = tally(L, sent); return `<tr>
+        <td><a class="name" href="#site/${s.c}">${esc(s.name)}</a></td><td><span class="kind">${esc(s.kind)}</span></td><td>${esc(s.city)}</td>
+        ${sizes.map((z) => cell(L, z)).join('')}
+        <td class="n">${fmt(t.req)}</td><td class="n">${fmt(t.done)}</td><td class="n big">${fmt(t.bal)}</td>
+        <td>${t.bal ? `<a class="btn go small" href="#site/${s.c}">Dispatch</a>` : state(1, 1)}</td></tr>`; }).join('')}
+      </tbody></table></div></section>`;
+}
+
+// ---------- one place (optionally combined with same-address entries) ----------
+const grab = () => Object.fromEntries([...document.querySelectorAll('input.q')].filter((i) => i.value).map((i) => [i.dataset.key, i.value]));
+
+function siteView(code, keep = {}) {
+  const s = siteBy(code);
+  if (!s) return listView();
+  if (combo.base !== code) combo = { base: code, extra: new Set() };
+  const sent = sentMap(), codes = [code, ...combo.extra], mates = matesOf(code);
+  const t = tally(codes.flatMap((c) => linesFor(siteBy(c))), sent);
+  const mine = DB.dispatches.filter((d) => d.sites.includes(code));
+  const f = (id, label, type = 'text', val = '') => `<div><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${val}"></div>`;
+
+  const body = codes.map((c) => { const x = siteBy(c); return `
+    ${codes.length > 1 ? `<tr class="sub"><td colspan="8">${esc(fullName(x))}</td></tr>` : ''}
+    ${linesFor(x).map((l) => { const req = l.staff + l.vb, done = sent[l.key] || 0, bal = req - done; return `<tr>
+      <td>${esc(l.item)}</td><td>${l.size ? `<span class="size">${esc(l.size)}</span>` : ''}</td>
+      <td class="n">${l.staff}</td><td class="n">${l.vb}</td><td class="n">${req}</td><td class="n">${done}</td>
+      <td class="n big">${bal ? bal : '<span class="state full">Done</span>'}</td>
+      <td class="n" style="white-space:nowrap">${bal ? `<button class="small quiet" onclick="setMax(this)">All</button> ` : ''}
+        <input class="q" type="number" min="0" max="${bal}" data-key="${l.key}" value="${esc(keep[l.key] || '')}" aria-label="Send now" ${bal ? '' : 'disabled'}></td></tr>`; }).join('')}`; }).join('');
+
+  app.innerHTML = `
+  <a class="back" href="#">Back to all places</a>
+  <section class="label"><div class="stripe"></div><div class="label-body">
+    <div><div class="to">Deliver to</div>
+      <h1>${codes.map((c) => esc(siteBy(c).name) + ` <span class="kind">${esc(siteBy(c).kind)}</span>`).join(' + ')}</h1>
+      <p class="address">${esc(s.addr)}</p>
+      <button onclick="copyAddr('${s.c}')">Copy address</button></div>
+    <dl><div><dt>GST number</dt><dd class="${gstOk(s) ? '' : 'missing'}">${esc(s.gst)}</dd></div>
+      <div><dt>Contact</dt><dd class="${s.contact ? '' : 'missing'}">${esc(s.contact) || 'Not in address file'}</dd></div>
+      <div><dt>Progress</dt><dd>${fmt(t.done)} of ${fmt(t.req)} sent</dd></div></dl>
+  </div></section>
+
+  ${mates.length ? `<section class="together"><h2>Send in one shipment and pay freight once</h2>
+    <div class="muted">Quantities are still counted separately for each entry. Check the addresses match before combining.</div>
+    ${mates.map((m) => { const x = siteBy(m), bal = tally(linesFor(x), sent).bal; return `<label>
+      <input type="checkbox" ${combo.extra.has(m) ? 'checked' : ''} onchange="toggleMate('${code}','${m}',this.checked)">
+      <span><b>Also include ${esc(fullName(x))}</b>, balance ${fmt(bal)}<br><span class="muted">${esc(x.addr)}</span></span></label>`; }).join('')}
+  </section>` : ''}
+
+  <section class="panel"><h2>What to send</h2>
+    <div class="wrap"><table id="pick"><thead><tr><th>PPE item</th><th>Size</th><th class="n">Staff</th><th class="n">Visitor / buffer</th>
+      <th class="n">Required</th><th class="n">Dispatched</th><th class="n">Balance</th><th class="n">Send now</th></tr></thead>
+      <tbody>${body}</tbody></table></div>
+    <h2 style="margin-top:26px">Shipment details</h2>
+    <div class="fields">
+      ${f('d-date', 'Dispatch date', 'date', new Date().toISOString().slice(0, 10))}
+      ${f('d-transporter', 'Transporter')}${f('d-lr', 'LR number')}${f('d-tracking', 'Tracking number')}
+      ${f('d-vehicle', 'Vehicle number')}${f('d-invoice', 'Invoice number')}${f('d-challan', 'Delivery challan number')}
+      ${f('d-remarks', 'Remarks')}
+    </div>
+    <div class="dock"><span class="count" id="now">0</span><span>units in this shipment${codes.length > 1 ? ' (combined)' : ''}</span><span class="grow"></span>
+      <button onclick="fillAll()">Fill full balance</button><button onclick="clearAll()">Clear</button>
+      <button class="go" onclick="saveDispatch('${s.c}')">Save shipment</button></div>
+  </section>
+
+  <section class="panel"><h2>Shipments to this place</h2>${dispatchTable(mine)}</section>`;
+  document.getElementById('pick').addEventListener('input', updateDock);
+  updateDock();
+}
+function updateDock() {
+  let n = 0;
+  document.querySelectorAll('input.q').forEach((i) => { const v = parseInt(i.value, 10) || 0; n += v; i.classList.toggle('over', v > +i.max); });
+  document.getElementById('now').textContent = fmt(n);
+}
+function setMax(btn) { const i = btn.closest('tr').querySelector('input.q'); i.value = i.max; updateDock(); }
+function toggleMate(code, mate, on) {
+  const keep = grab();
+  if (on) combo.extra.add(mate); else combo.extra.delete(mate);
+  siteView(code, keep);
+}
+function fillAll() { document.querySelectorAll('input.q:not(:disabled)').forEach((i) => { i.value = i.max; }); updateDock(); }
+function clearAll() { document.querySelectorAll('input.q').forEach((i) => { i.value = ''; }); updateDock(); }
+function copyAddr(code) {
+  const s = siteBy(code);
+  const text = `${fullName(s)}\n${s.addr}\nGST: ${s.gst}\nContact: ${s.contact}`;
+  navigator.clipboard.writeText(text).then(() => toast('Address copied'), () => prompt('Copy the address:', text));
+}
+
+function saveDispatch(code) {
+  const codes = [code, ...combo.extra];
+  const known = new Map(codes.flatMap((c) => linesFor(siteBy(c))).map((l) => [l.key, l]));
+  const lines = [];
+  for (const i of document.querySelectorAll('input.q')) {
+    const qty = parseInt(i.value, 10) || 0;
+    if (qty <= 0) continue;
+    const l = known.get(i.dataset.key);
+    if (qty > +i.max) { i.focus(); return toast(`${l.item} ${l.size} for ${fullName(siteBy(l.site))}: only ${i.max} left to send, you entered ${qty}.`, true); }
+    lines.push({ key: l.key, site: l.site, it: l.it, item: l.item, size: l.size, qty });
+  }
+  if (!lines.length) return toast('Enter a quantity under "Send now" on at least one line.', true);
+  const v = (id) => document.getElementById(id).value.trim();
+  DB.seq += 1;
+  const no = 'DSP-' + String(DB.seq).padStart(4, '0');
+  DB.dispatches.push({ id: String(Date.now()), no,
+    sites: codes.filter((c) => lines.some((l) => l.site === c)), date: v('d-date'),
+    transporter: v('d-transporter'), lr: v('d-lr'), tracking: v('d-tracking'), vehicle: v('d-vehicle'),
+    invoice: v('d-invoice'), challan: v('d-challan'), remarks: v('d-remarks'), lines });
+  save(); siteView(code);
+  toast(`Shipment ${no} saved, ${fmt(lines.reduce((t, l) => t + l.qty, 0))} units`);
+}
+
+// ---------- shipments ----------
+function allView() {
+  app.innerHTML = `<h1>Shipments</h1><p class="muted" style="margin:6px 0 0">${DB.dispatches.length} saved on this computer.</p>
+    <section class="panel">${dispatchTable(DB.dispatches)}</section>`;
+}
+function dispatchTable(list) {
+  if (!list.length) return '<p class="muted" style="margin:0">Nothing sent yet. Open a place, enter the quantities and save the shipment.</p>';
+  return `<div class="wrap"><table><thead><tr><th>Shipment</th><th>Date</th><th>Delivered to</th><th>Items sent</th>
+    <th class="n">Units</th><th>Transporter</th><th>LR and tracking</th><th>Vehicle</th><th>Invoice</th><th>Challan</th><th></th></tr></thead>
+  <tbody>${[...list].reverse().map((d) => `<tr>
+    <td><span class="big">${esc(d.no)}</span>${d.sites.length > 1 ? '<div><span class="kind">Combined</span></div>' : ''}</td><td style="white-space:nowrap">${esc(d.date)}</td>
+    <td>${d.sites.map((c) => `<a href="#site/${c}">${esc(fullName(siteBy(c)))}</a>`).join('<br>')}</td>
+    <td class="muted">${d.lines.map((l) => `${esc(l.item)}${l.size ? ' size ' + esc(l.size) : ''}, ${l.qty}${d.sites.length > 1 ? ` <span class="kind">${esc(siteBy(l.site).kind)}</span>` : ''}`).join('<br>')}</td>
+    <td class="n big">${fmt(d.lines.reduce((t, l) => t + l.qty, 0))}</td><td>${esc(d.transporter)}</td>
+    <td>${esc(d.lr)}${d.tracking ? '<br>' + esc(d.tracking) : ''}</td><td>${esc(d.vehicle)}</td><td>${esc(d.invoice)}</td><td>${esc(d.challan)}</td>
+    <td style="white-space:nowrap"><button class="small" onclick="printSlip('${d.id}')">Print slip</button>
+      <button class="small danger" onclick="removeDispatch('${d.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+function removeDispatch(id) {
+  const d = DB.dispatches.find((x) => x.id === id);
+  if (!confirm(`Delete ${d.no}? Its quantities go back to the balance.`)) return;
+  DB.dispatches = DB.dispatches.filter((x) => x.id !== id);
+  save(); route(); toast(`Shipment ${d.no} deleted`);
+}
+
+function printSlip(id) {
+  const d = DB.dispatches.find((x) => x.id === id), list = d.sites.map(siteBy), first = list[0];
+  const uniq = (a) => [...new Set(a.filter(Boolean))].join(' / ');
+  document.getElementById('slip').innerHTML = `
+    <h1>Rama Engineers dispatch slip ${esc(d.no)}</h1>
+    <p><b>Date:</b> ${esc(d.date)}<br><b>Deliver to:</b> ${esc(list.map(fullName).join(' + '))}<br>${esc(first.addr)}<br>
+      <b>GST:</b> ${esc(uniq(list.map((s) => s.gst)))} &nbsp; <b>Contact:</b> ${esc(uniq(list.map((s) => s.contact)))}</p>
+    <p><b>Transporter:</b> ${esc(d.transporter)} &nbsp; <b>LR:</b> ${esc(d.lr)} &nbsp; <b>Tracking:</b> ${esc(d.tracking)}<br>
+      <b>Vehicle:</b> ${esc(d.vehicle)} &nbsp; <b>Invoice:</b> ${esc(d.invoice)} &nbsp; <b>Challan:</b> ${esc(d.challan)}<br>
+      <b>Remarks:</b> ${esc(d.remarks)}</p>
+    <table><thead><tr><th>PPE item</th><th>Size</th><th class="n">Quantity</th></tr></thead><tbody>
+      ${list.map((s) => { const L = d.lines.filter((l) => l.site === s.c); return `
+        ${list.length > 1 ? `<tr class="sub"><td colspan="2">${esc(fullName(s))}</td><td class="n">${L.reduce((t, l) => t + l.qty, 0)}</td></tr>` : ''}
+        ${L.map((l) => `<tr><td>${esc(l.item)}</td><td>${esc(l.size) || '—'}</td><td class="n">${l.qty}</td></tr>`).join('')}`; }).join('')}
+      <tr><td colspan="2"><b>Total</b></td><td class="n"><b>${d.lines.reduce((t, l) => t + l.qty, 0)}</b></td></tr></tbody></table>
+    <p style="margin-top:50px">Received by: ____________________ &nbsp; Date: ____________ &nbsp; Signature: ____________________</p>`;
+  document.body.classList.add('printing');
+  window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+
+// ---------- export / backup ----------
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+function exportCsv() {
+  if (!DB.dispatches.length) return toast('There are no shipments to export yet.', true);
+  const head = ['Shipment No', 'Combined Shipment', 'Date', 'Site', 'Project/Operation', 'Address', 'GST', 'Contact', 'PPE Item', 'Size', 'Quantity',
+    'Transporter', 'LR Number', 'Tracking Number', 'Vehicle Number', 'Invoice Number', 'Challan Number', 'Remarks'];
+  const rows = DB.dispatches.flatMap((d) => d.lines.map((l) => { const s = siteBy(l.site); return [d.no, d.sites.length > 1 ? 'Yes' : 'No',
+    d.date, s.name, s.kind, s.addr, s.gst, s.contact, l.item, l.size, l.qty,
+    d.transporter, d.lr, d.tracking, d.vehicle, d.invoice, d.challan, d.remarks]; }));
+  const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  download(`ppe-dispatches-${stamp()}.csv`, '\ufeff' + csv, 'text/csv');
+}
+function backup() { download(`ppe-dispatch-backup-${stamp()}.json`, JSON.stringify(DB), 'application/json'); toast('Backup file downloaded'); }
+function restore(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!Array.isArray(data.dispatches)) throw new Error();
+      if (!confirm(`Replace the ${DB.dispatches.length} shipments on this computer with the ${data.dispatches.length} in the backup?`)) return;
+      DB = data; upgrade(); save(); route(); toast('Backup restored');
+    } catch (e) { toast('That file is not a valid backup.', true); }
+    input.value = '';
+  };
+  r.readAsText(file);
+}
+
+route();
+</script>
+</body>
+</html>
