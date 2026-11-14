@@ -209,7 +209,11 @@ const SITES = [
 ];
 
 // ---------- storage ----------
+// Shipments live in a shared Google Sheet (through the Apps Script web app below).
+// A copy is also kept in this browser so the page can still be read without internet.
+const API = 'https://script.google.com/macros/s/AKfycbz9M5JWIEcJCAL2rpeOfNvuOr_Sn71SRs0P0lpBfpUc3X8uGG0w8EkgLePk5bhlrM0Uxw/exec';
 const KEY = 'rama-ppe-dispatch-v1';
+const PINKEY = KEY + '-pin';
 let DB = { seq: 0, dispatches: [] };
 try { DB = JSON.parse(localStorage.getItem(KEY)) || DB; } catch (e) {}
 function upgrade() {            // records saved by the first version had one site each
@@ -220,6 +224,30 @@ function upgrade() {            // records saved by the first version had one si
 }
 upgrade();
 const save = () => localStorage.setItem(KEY, JSON.stringify(DB));
+
+async function cloud(action, extra = {}) {
+  const pin = localStorage.getItem(PINKEY) || prompt('Enter the team PIN') || '';
+  const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ pin, action, ...extra }) });
+  const out = await res.json();
+  if (!out.ok) {
+    if (out.error === 'pin') localStorage.removeItem(PINKEY);
+    throw new Error(out.error === 'pin' ? 'wrong PIN' : out.error);
+  }
+  localStorage.setItem(PINKEY, pin);
+  return out;
+}
+function apply(out) { DB = { seq: out.seq, dispatches: out.dispatches }; upgrade(); save(); }
+async function sync() {
+  try {
+    let out = await cloud('load');
+    if (!out.dispatches.length && DB.dispatches.length)   // first run: upload what this browser already has
+      out = await cloud('replace', { seq: DB.seq, dispatches: DB.dispatches });
+    apply(out);
+    const h = location.hash;
+    if (h.startsWith('#site/')) siteView(h.slice(6), grab()); else route();
+  } catch (e) { toast('Could not reach the shared sheet (' + e.message + '). Showing the copy on this device.', true); }
+}
 
 // ---------- helpers ----------
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -454,7 +482,9 @@ function copyAddr(code) {
   navigator.clipboard.writeText(text).then(() => toast('Address copied'), () => prompt('Copy the address:', text));
 }
 
-function saveDispatch(code) {
+let busy = false;
+async function saveDispatch(code) {
+  if (busy) return;
   const codes = [code, ...combo.extra];
   const known = new Map(codes.flatMap((c) => linesFor(siteBy(c))).map((l) => [l.key, l]));
   const lines = [];
@@ -467,19 +497,22 @@ function saveDispatch(code) {
   }
   if (!lines.length) return toast('Enter a quantity under "Send now" on at least one line.', true);
   const v = (id) => document.getElementById(id).value.trim();
-  DB.seq += 1;
-  const no = 'DSP-' + String(DB.seq).padStart(4, '0');
-  DB.dispatches.push({ id: String(Date.now()), no,
+  const dispatch = { id: String(Date.now()), no: '',
     sites: codes.filter((c) => lines.some((l) => l.site === c)), date: v('d-date'),
     transporter: v('d-transporter'), lr: v('d-lr'), tracking: v('d-tracking'), vehicle: v('d-vehicle'),
-    invoice: v('d-invoice'), challan: v('d-challan'), remarks: v('d-remarks'), lines });
-  save(); siteView(code);
-  toast(`Shipment ${no} saved, ${fmt(lines.reduce((t, l) => t + l.qty, 0))} units`);
+    invoice: v('d-invoice'), challan: v('d-challan'), remarks: v('d-remarks'), lines };
+  busy = true; toast('Saving…');
+  try {
+    const out = await cloud('add', { dispatch });
+    apply(out); siteView(code);
+    toast(`Shipment ${out.no} saved, ${fmt(lines.reduce((t, l) => t + l.qty, 0))} units`);
+  } catch (e) { toast('Not saved (' + e.message + '). Check the internet and press Save again.', true); }
+  busy = false;
 }
 
 // ---------- shipments ----------
 function allView() {
-  app.innerHTML = `<h1>Shipments</h1><p class="muted" style="margin:6px 0 0">${DB.dispatches.length} saved on this computer.</p>
+  app.innerHTML = `<h1>Shipments</h1><p class="muted" style="margin:6px 0 0">${DB.dispatches.length} saved in the shared sheet.</p>
     <section class="panel">${dispatchTable(DB.dispatches)}</section>`;
 }
 function dispatchTable(list) {
@@ -495,11 +528,11 @@ function dispatchTable(list) {
     <td style="white-space:nowrap"><button class="small" onclick="printSlip('${d.id}')">Print slip</button>
       <button class="small danger" onclick="removeDispatch('${d.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
 }
-function removeDispatch(id) {
+async function removeDispatch(id) {
   const d = DB.dispatches.find((x) => x.id === id);
   if (!confirm(`Delete ${d.no}? Its quantities go back to the balance.`)) return;
-  DB.dispatches = DB.dispatches.filter((x) => x.id !== id);
-  save(); route(); toast(`Shipment ${d.no} deleted`);
+  try { apply(await cloud('delete', { id })); route(); toast(`Shipment ${d.no} deleted`); }
+  catch (e) { toast('Not deleted (' + e.message + ').', true); }
 }
 
 function printSlip(id) {
@@ -549,15 +582,17 @@ function restore(input) {
     try {
       const data = JSON.parse(r.result);
       if (!Array.isArray(data.dispatches)) throw new Error();
-      if (!confirm(`Replace the ${DB.dispatches.length} shipments on this computer with the ${data.dispatches.length} in the backup?`)) return;
-      DB = data; upgrade(); save(); route(); toast('Backup restored');
+      if (!confirm(`Replace the ${DB.dispatches.length} shipments in the shared sheet with the ${data.dispatches.length} in the backup?`)) return;
+      cloud('replace', { seq: data.seq || 0, dispatches: data.dispatches })
+        .then((out) => { apply(out); route(); toast('Backup restored'); })
+        .catch((e) => toast('Restore failed (' + e.message + ').', true));
     } catch (e) { toast('That file is not a valid backup.', true); }
     input.value = '';
   };
   r.readAsText(file);
 }
 
-route();
+route(); sync();
 </script>
 </body>
 </html>
